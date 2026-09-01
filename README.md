@@ -271,6 +271,8 @@ Test_results/
 └── results_run(exp_name)_epoch65.../
     ├── per_batch_results.csv - Per-batch metrics
     ├── results_summary.txt - Summary statistics
+    ├── grid_original_images.png - Grid of original test images
+    ├── grid_encoded_images.png - Grid of watermarked encoded images
     ├── BER_distribution.png - Bit Error Rate distribution plot
     ├── ACCURACY_distribution.png - Accuracy distribution plot
     ├── PSNR_distribution.png - PSNR distribution plot
@@ -285,3 +287,11 @@ Test_results/
 - **PSNR** (Peak Signal-to-Noise Ratio): Image quality measurement in dB
 - **SSIM** (Structural Similarity Index): Perceptual similarity to original
 - **LPIPS** (Learned Perceptual Image Patch Similarity): Perceptual loss metric
+
+### Sample Images
+
+During testing, the system randomly selects images from `save_images_number` batches and saves them as grids:
+- **grid_original_images.png**: Grid of original test images
+- **grid_encoded_images.png**: Grid of watermarked images after encoding
+
+These grids allow visual inspection of how the watermarking affects the image quality.

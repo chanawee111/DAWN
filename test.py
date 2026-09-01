@@ -9,6 +9,7 @@ from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
+import torchvision
 
 from utilities import *
 from models.model import *
@@ -80,16 +81,26 @@ def plot_flat_ratio_comparison(filtered_results, output_dir):
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
     plt.close()
 
-def run_test(model, test_dataloader, device, message_length, desc="Testing", jpeg_sim_instance=None):
+def run_test(model, test_dataloader, device, message_length, desc="Testing", jpeg_sim_instance=None, save_images_number=4):
     """
     Run testing loop on a dataloader (no filtering — data is pre-split by directory).
-    Returns per-batch results, aggregate stats, and metric distributions.
+    Returns per-batch results, aggregate stats, metric distributions, and sample images.
     """
     LPIPS_loss = LearnedPerceptualImagePatchSimilarity(net_type="vgg").to(device)
 
     total_ber, total_acc, total_psnr, total_lpips, total_ssim = [], [], [], [], []
     batch_results = []
     processed_images = 0
+    
+    # Select random batches to save
+    total_batches = len(test_dataloader)
+    saved_iterations = np.random.choice(
+        np.arange(total_batches), 
+        size=min(save_images_number, total_batches), 
+        replace=False
+    )
+    saved_original_images = []
+    saved_encoded_images = []
 
     for i, images in enumerate(tqdm(test_dataloader, desc=desc)):
         image = images.to(device)
@@ -103,7 +114,7 @@ def run_test(model, test_dataloader, device, message_length, desc="Testing", jpe
         model.discriminator.eval()
 
         with torch.no_grad():
-            encoded_images, _, _, _ = model.encoder_decoder.module.encoder(image, message,jpeg_diff_map)
+            encoded_images, _, _, _ = model.encoder_decoder.module.encoder(image, message, jpeg_diff_map)
 
             encoded_images_denormalized = denormalize(encoded_images)
             encoded_images_denormalized = normalize(encoded_images_denormalized)
@@ -139,6 +150,11 @@ def run_test(model, test_dataloader, device, message_length, desc="Testing", jpe
             'ssim':        ssim,
             'lpips':       lpips,
         })
+        
+        # Save images from selected batches
+        if i in saved_iterations:
+            saved_original_images.append(image.detach().cpu())
+            saved_encoded_images.append(encoded_images.detach().cpu())
 
     if len(total_ber) > 0:
         stats = {
@@ -170,11 +186,13 @@ def run_test(model, test_dataloader, device, message_length, desc="Testing", jpe
             'psnr':     total_psnr,
             'lpips':    total_lpips,
             'ssim':     total_ssim,
-        }
+        },
+        'original_images': saved_original_images,
+        'encoded_images': saved_encoded_images,
     }
 
 def save_range_results(results, range_label, output_dir):
-    """Save per-batch CSV, summary txt, and metric distribution plots for one range."""
+    """Save per-batch CSV, summary txt, metric distribution plots, and image grids."""
     os.makedirs(output_dir, exist_ok=True)
     stats = results['stats']
 
@@ -195,7 +213,7 @@ def save_range_results(results, range_label, output_dir):
     # Summary txt
     summary_txt = os.path.join(output_dir, "results_summary.txt")
     with open(summary_txt, "w") as f:
-        f.write(f"FLAT RATIO {range_label} — TEST SUMMARY\n")
+        f.write(f"TEST SUMMARY\n")
         f.write(f"Processed Images: {stats['processed_images']}\n\n")
         f.write(f"BER:      {stats['avg_ber']:.4f} ± {stats['std_ber']:.4f}\n")
         f.write(f"Accuracy: {stats['avg_accuracy']:.4f} ± {stats['std_accuracy']:.4f}\n")
@@ -207,6 +225,25 @@ def save_range_results(results, range_label, output_dir):
     for metric_name, data in results['distributions'].items():
         if len(data) > 0:
             plot_metric_distribution(data, metric_name.upper(), output_dir)
+    
+    # Save image grids
+    original_images = results.get('original_images', [])
+    encoded_images = results.get('encoded_images', [])
+    
+    if len(original_images) > 0 and len(encoded_images) > 0:
+        # Concatenate all saved batches
+        original_all = torch.cat(original_images, dim=0)
+        encoded_all = torch.cat(encoded_images, dim=0)
+        
+        # Create and save original image grid
+        original_grid = torchvision.utils.make_grid(original_all, nrow=4, normalize=True, scale_each=True)
+        original_grid_path = os.path.join(output_dir, "grid_original_images.png")
+        torchvision.utils.save_image(original_grid, original_grid_path)
+        
+        # Create and save encoded image grid
+        encoded_grid = torchvision.utils.make_grid(encoded_all, nrow=4, normalize=True, scale_each=True)
+        encoded_grid_path = os.path.join(output_dir, "grid_encoded_images.png")
+        torchvision.utils.save_image(encoded_grid, encoded_grid_path)
 
 
 # ------------------------------------------------
@@ -297,7 +334,8 @@ if len(dataset) == 0:
 results = run_test(
     model, dataloader, device, message_length,
     desc="Testing",
-    jpeg_sim_instance=jpeg_sim_layer
+    jpeg_sim_instance=jpeg_sim_layer,
+    save_images_number=save_images_number
 )
 
 # Save results
@@ -322,6 +360,8 @@ print(f"\n📁 Output directory: {OUTPUT_DIR}")
 print(f"\n📊 Results saved:")
 print(f"   ├── per_batch_results.csv")
 print(f"   ├── results_summary.txt")
+print(f"   ├── grid_original_images.png")
+print(f"   ├── grid_encoded_images.png")
 print(f"   ├── BER_distribution.png")
 print(f"   ├── ACCURACY_distribution.png")
 print(f"   ├── PSNR_distribution.png")
