@@ -57,16 +57,12 @@ class Model:
                                                 )
 
         # spatial loss weights
-        self.ssim_weight = encoder_ssim_weight
-        self.lpips_weight = encoder_lpips_weight
         self.edge_weight = 1.0
         self.BCE_loss = nn.BCEWithLogitsLoss().to(device)
         
 
         # define weights for encoder_decoder and discriminator
         self.discriminator_weight = discriminator_weight
-        self.encoder_weight = encoder_weight
-        self.decoder_weight = decoder_weight
 
     def train(self, image: torch.Tensor, message: torch.Tensor, epoch: int):
         self.encoder_decoder.train()

@@ -146,3 +146,72 @@ Then update `test_settings.json` to point to the `test` subdirectory:
 - **Training Dataset:** Typically 15,000-20,000+ images
 - **Validation Dataset:** Typically 2,000-5,000 images
 - **Test Dataset:** Typically 5,000+ images
+
+## Training
+
+### Quick Start
+
+1. **Prepare your datasets** following the Dataset Configuration section above
+
+2. **Update `train_settings.json`** with your dataset paths and desired parameters
+
+3. **Start training:**
+   ```bash
+   python train.py
+   ```
+
+### Training Parameters
+
+Adjust the following parameters in `train_settings.json`:
+
+| Parameter | Description | Type | Default |
+|-----------|-------------|------|---------|
+| `project_name` | Project name for results folder | String | `DAWN_JPEG420_30bits` |
+| `decoder_only_training` | If true, only train decoder; if false, train encoder+decoder | Boolean | `false` |
+| `epoch_number` | Total number of training epochs | Integer | `65` |
+| `batch_size` | Number of images per batch | Integer | `4` |
+| `discriminator_weight` | Weight for discriminator loss | Float | `0.001` |
+| `dataset_path` | Path to training dataset | String | Required |
+| `enable_validation` | Enable validation during training | Boolean | `true` |
+| `validation_dataset_path` | Path to validation dataset | String | Required if `enable_validation` is true |
+| `H` | Image height (images resized to this) | Integer | `128` |
+| `W` | Image width (images resized to this) | Integer | `128` |
+| `message_length` | Length of watermark message in bits | Integer | `30` |
+| `lr` | Learning rate | Float | `1e-4` |
+| `noise_layers` | Distortion layers for robustness training | List | `["Combined([JpegARWGAN420_v2(quality=50), Identity()])"]` |
+| `save_images_number` | Number of sample images to save during training | Integer | `4` |
+| `seed` | Random seed for reproducibility | Integer | `1751610149` |
+| `train_continue` | Resume from checkpoint | Boolean | `false` |
+| `train_continue_path` | Path to checkpoint folder | String | `""` |
+| `train_continue_epoch` | Epoch to resume from | Integer | `65` |
+| `train_continue_from_lastest_epoch` | Auto-detect latest epoch | Boolean | `false` |
+
+### Training Example
+
+```json
+{
+  "project_name": "DAWN_JPEG420_30bits",
+  "decoder_only_training": false,
+  "epoch_number": 65,
+  "batch_size": 4,
+  "discriminator_weight": 0.001,
+  "dataset_path": "/path/to/training/dataset",
+  "enable_validation": true,
+  "validation_dataset_path": "/path/to/validation/dataset",
+  "H": 128,
+  "W": 128,
+  "message_length": 30,
+  "lr": 1e-4,
+  "noise_layers": ["Combined([JpegARWGAN420_v2(quality=50), Identity()])"],
+  "seed": 1751610149
+}
+```
+
+### Training Output
+
+Results are saved in `results/` folder with:
+- `train_log.txt` - Training metrics per epoch
+- `val_log.txt` - Validation metrics per epoch (if validation enabled)
+- `train_params.txt` - Complete training configuration
+- `models/` - Encoder and Discriminator checkpoints
+- `tensorboard_logs/` - TensorBoard logs for visualization

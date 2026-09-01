@@ -17,12 +17,7 @@ validation_dataset_path = settings.validation_dataset_path if enable_validation 
 epoch_number = settings.epoch_number
 batch_size = settings.batch_size
 train_continue = settings.train_continue
-train_continue_start = settings.train_continue_start
 discriminator_weight = settings.discriminator_weight
-encoder_weight = settings.encoder_mse_weight
-encoder_ssim_weight = settings.encoder_ssim_weight
-encoder_lpips_weight = settings.encoder_lpips_weight
-decoder_weight = settings.decoder_weight
 train_continue_path = settings.train_continue_path
 train_continue_epoch = settings.train_continue_epoch
 train_continue_from_lastest_epoch = settings.train_continue_from_lastest_epoch
@@ -30,8 +25,6 @@ save_images_number = settings.save_images_number
 lr = settings.lr
 H, W, message_length = settings.H, settings.W, settings.message_length,
 noise_layers = settings.noise_layers
-encoder_start_fn = settings.encoder_start
-encoder_peak_fn = settings.encoder_peak
 seed = settings.seed
 
 

@@ -6,16 +6,7 @@ import torch.nn.functional as F
 class YCbCrWeightedMSELoss(nn.Module):
     """
     MSE loss computed separately on Y (luma) and Cb/Cr (chroma) channels,
-    then combined with independent weights.
-
-    Operates directly on inputs in [-1, 1] (this pipeline's native range) —
-    no rescale to [0,1], so magnitude stays consistent with the rest of the
-    loss terms (LPIPS/SSIM/decoder) and encoder_mse_weight doesn't need
-    re-tuning when swapping this in for plain MSE.
-
-    Note: the YCbCr chroma "+0.5" centering offset is intentionally omitted
-    since MSE is invariant to a constant offset applied equally to both
-    tensors being compared -- it only matters for display, not for loss.
+    then combined with independent weights (alway 1.0).
     """
 
     def __init__(self, y_weight=1.0, chroma_weight=1.0):

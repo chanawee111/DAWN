@@ -4,19 +4,12 @@
   "epoch_number": 65,
   "batch_size": 4,
   "discriminator_weight": 0.001,
-  "encoder_mse_weight": 1.0,
-  "encoder_ssim_weight": 1.0,
-  "encoder_lpips_weight": 1.0,
-  "decoder_weight": 1.0,
-  "encoder_start": 0,
-  "encoder_peak": 30,
   "train_continue": false,
-  "train_continue_start": 40,
-  "train_continue_from_lastest_epoch": false,
   "train_continue_path": "",
   "train_continue_epoch": 65,
-  "dataset_path": "/home/chanawee/anaconda3/envs/proposal/src/my_proposal/datasets/coco_color_filter_ratio_20000",
-  "enable_validation": true,
+  "train_continue_from_lastest_epoch": false,
+  "dataset_path": "/home/chanawee/anaconda3/envs/proposal/src/my_proposal/datasets/coco_color_filter_ratio_10000",
+  "enable_validation": false,
   "validation_dataset_path": "/home/chanawee/anaconda3/envs/proposal/src/my_proposal/datasets/val2017_2500",
   "save_images_number": 4,
   "H": 128,
@@ -26,5 +19,5 @@
   "noise_layers": [
     "Combined([JpegARWGAN420_v2(quality=50), Identity()])"
   ],
-  "seed" : 1751610149
+  "seed": 1751610149
 }
