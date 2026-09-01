@@ -215,3 +215,73 @@ Results are saved in `results/` folder with:
 - `train_params.txt` - Complete training configuration
 - `models/` - Encoder and Discriminator checkpoints
 - `tensorboard_logs/` - TensorBoard logs for visualization
+
+## Testing
+
+### Quick Start
+
+1. **Prepare your test dataset** following the Dataset Configuration section above
+
+2. **Update `test_settings.json`** with:
+   - `dataset_path`: Path to your test dataset (with `/test` subdirectory)
+   - `model_epoch`: Epoch number of the trained model to load
+
+3. **Start testing:**
+   ```bash
+   python test.py
+   ```
+
+### Testing Parameters
+
+Adjust the following parameters in `test_settings.json`:
+
+| Parameter | Description | Type | Default |
+|-----------|-------------|------|---------|
+| `result_folder` | Folder name for results (in `Test_results/`) | String | `dawn_jpeg50_420/` |
+| `model_epoch` | Epoch of the trained model to load | Integer | `65` |
+| `strength_factor` | Watermark embedding strength factor | Float | `1` |
+| `dataset_path` | Path to test dataset (must include `/test` subdirectory) | String | Required |
+| `H` | Image height (must match training) | Integer | `128` |
+| `W` | Image width (must match training) | Integer | `128` |
+| `message_length` | Message length in bits (must match training) | Integer | `30` |
+| `save_images_number` | Number of sample images to save | Integer | `4` |
+| `noise_layers` | Distortion layers to apply during testing | List | `["JpegTest(50)"]` |
+
+### Testing Example
+
+```json
+{
+  "result_folder": "dawn_jpeg50_420/",
+  "model_epoch": 65,
+  "strength_factor": 1,
+  "dataset_path": "/path/to/test/dataset/test",
+  "H": 128,
+  "W": 128,
+  "message_length": 30,
+  "save_images_number": 4,
+  "noise_layers": ["JpegTest(50)"]
+}
+```
+
+### Testing Output
+
+Results are saved in `Test_results/` folder with structure:
+```
+Test_results/
+└── results_run(exp_name)_epoch65.../
+    ├── per_batch_results.csv - Per-batch metrics
+    ├── results_summary.txt - Summary statistics
+    ├── BER_distribution.png - Bit Error Rate distribution plot
+    ├── ACCURACY_distribution.png - Accuracy distribution plot
+    ├── PSNR_distribution.png - PSNR distribution plot
+    ├── LPIPS_distribution.png - LPIPS distribution plot
+    └── SSIM_distribution.png - SSIM distribution plot
+```
+
+### Test Metrics
+
+- **BER** (Bit Error Rate): Percentage of incorrectly decoded bits
+- **Accuracy**: Percentage of correctly decoded messages
+- **PSNR** (Peak Signal-to-Noise Ratio): Image quality measurement in dB
+- **SSIM** (Structural Similarity Index): Perceptual similarity to original
+- **LPIPS** (Learned Perceptual Image Patch Similarity): Perceptual loss metric
