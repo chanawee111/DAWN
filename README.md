@@ -59,11 +59,8 @@ GPU: <Your NVIDIA GPU>
 
 * PyTorch 2.6.0
 * Torchvision 0.21.0
-* DTCWT 0.14.0
-* PyTorch Wavelets 1.3.0
 * Kornia 0.8.0
 * PyTorch-MSSSIM 1.0.0
-* TIMM 1.0.28
 * OpenCV 4.11.0
 * scikit-image 0.25.2
 * TensorBoard 2.19.0
