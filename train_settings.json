@@ -1,0 +1,28 @@
+{
+  "project_name": "DAWN_JPEG420_30bits",
+  "decoder_only_training": false,
+  "epoch_number": 65,
+  "batch_size": 4,
+  "discriminator_weight": 0.001,
+  "encoder_mse_weight": 1.0,
+  "encoder_ssim_weight": 1.0,
+  "encoder_lpips_weight": 1.0,
+  "decoder_weight": 1.0,
+  "encoder_start": 0,
+  "encoder_peak": 30,
+  "train_continue": false,
+  "train_continue_start": 40,
+  "train_continue_from_lastest_epoch": false,
+  "train_continue_path": "",
+  "train_continue_epoch": 65,
+  "dataset_path": "/home/chanawee/anaconda3/envs/proposal/src/my_proposal/datasets",
+  "save_images_number": 4,
+  "H": 128,
+  "W": 128,
+  "message_length": 30,
+  "lr": 1e-4,
+  "noise_layers": [
+    "Combined([JpegARWGAN420_v2(quality=50), Identity()])"
+  ],
+  "seed" : 1751610149
+}
