@@ -231,39 +231,22 @@ result_name = match.group(1) if match else "default_exp"
 
 OUTPUT_DIR = (
     f"./Test_results/results_run({result_name})_epoch{model_epoch}"
-    f"_JpegTest_420_jpeg{jpeg_quality}_ImageNet_balanced_test5000"
-    f"_flat_color_presplit_jpeg{strength_factor}_with_YcbcrMSE_Attention_(baseline)_64bits_v2/"
+    f"_JpegTest_420_jpeg{jpeg_quality}_test5000_jpeg{strength_factor}/"
 )
-
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ------------------------------------------------
-# Dataset root — adjust this to your actual path
+# Dataset root
 # ------------------------------------------------
-# Expected structure under DATASET_ROOT:
-#   test/                          ← all 5000 images
-#   flat_ratio_0.00_0.20/test/
-#   flat_ratio_0.20_0.40/test/
-#   flat_ratio_0.40_0.60/test/
-#   flat_ratio_0.60_0.80/test/
-#   flat_ratio_0.80_1.00/test/
+# Expected structure: flat directory with all test images
+#   dataset_path/
+#       ├── image_001.jpeg
+#       ├── image_002.png
+#       └── ...
 DATASET_ROOT = dataset_path   # from load_test_setting
 
-# Discover all flat-ratio subdirectories automatically
-FLAT_RATIO_DIRS = sorted([
-    d for d in os.listdir(DATASET_ROOT)
-    if d.startswith("flat_ratio_") and os.path.isdir(os.path.join(DATASET_ROOT, d))
-])
-
-# Build label → path mapping
-# "all" uses the top-level test/ directory
-subset_map = {"all": os.path.join(DATASET_ROOT, "test")}
-for dir_name in FLAT_RATIO_DIRS:
-    label = dir_name.replace("flat_ratio_", "").replace("_", "-")  # e.g. "0.00-0.20"
-    subset_map[label] = os.path.join(DATASET_ROOT, dir_name, "test")
-
-print(f"\nDiscovered subsets: {list(subset_map.keys())}")
+print(f"\nTest dataset path: {DATASET_ROOT}")
 
 # ------------------------------------------------
 # Model
@@ -286,104 +269,62 @@ encoder_path = result_folder + f"models/Encoder_{model_epoch}.pth"
 model.load_model_ed(encoder_path)
 
 # ------------------------------------------------
-# Main loop: test each subset
+# Main loop: test flat dataset
 # ------------------------------------------------
 print("\n" + "="*60)
-print("TESTING PIPELINE — PRE-SPLIT FLAT COLOR RATIO DIRS")
+print("TESTING PIPELINE — FLAT TEST DATASET (5000 IMAGES)")
 print("="*60)
 
-all_subset_results = {}
+if not os.path.isdir(DATASET_ROOT):
+    print(f"\n❌ Dataset directory not found: {DATASET_ROOT}")
+    exit(1)
 
-for label, data_dir in subset_map.items():
-    if not os.path.isdir(data_dir):
-        print(f"\n⚠️  Directory not found, skipping: {data_dir}")
-        continue
+print(f"\n[Testing]  →  {DATASET_ROOT}")
 
-    print(f"\n[Subset: {label}]  →  {data_dir}")
+dataset    = Dataset_loader(DATASET_ROOT, H, W)
+dataloader = DataLoader(
+    dataset,
+    batch_size=batch_size,
+    shuffle=False,
+    num_workers=0,
+    pin_memory=True,
+)
 
-    dataset    = Dataset_loader(data_dir, H, W)
-    dataloader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=0,
-        pin_memory=True,
-    )
+if len(dataset) == 0:
+    print(f"❌ No images found in {DATASET_ROOT}")
+    exit(1)
 
-    if len(dataset) == 0:
-        print(f"   ⚠️  No images found, skipping.")
-        continue
+results = run_test(
+    model, dataloader, device, message_length,
+    desc="Testing",
+    jpeg_sim_instance=jpeg_sim_layer
+)
 
-    results = run_test(
-        model, dataloader, device, message_length,
-        desc=f"Subset {label}",
-        jpeg_sim_instance=jpeg_sim_layer
-    )
+# Save results
+save_range_results(results, "test_5000", OUTPUT_DIR)
 
-    all_subset_results[label] = results
-
-    # Save individual subset results
-    subset_out_dir = os.path.join(
-        OUTPUT_DIR,
-        "all_images" if label == "all" else f"flat_ratio_{label.replace('-', '_')}"
-    )
-    save_range_results(results, label, subset_out_dir)
-
-    stats = results['stats']
-    print(f"   ✅  {stats['processed_images']} images | "
-          f"BER={stats['avg_ber']:.4f} | "
-          f"Acc={stats['avg_accuracy']:.4f} | "
-          f"PSNR={stats['avg_psnr']:.2f} | "
-          f"SSIM={stats['avg_ssim']:.4f} | "
-          f"LPIPS={stats['avg_lpips']:.4f}")
-
-# ------------------------------------------------
-# Comparison CSV (flat-ratio subsets only, excl. "all")
-# ------------------------------------------------
-print("\nCreating comparison summary...")
-
-ratio_results = {k: v for k, v in all_subset_results.items() if k != "all"}
-
-comparison_csv = os.path.join(OUTPUT_DIR, "flat_ratio_comparison.csv")
-with open(comparison_csv, "w", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerow([
-        "Flat_Ratio_Range",
-        "Processed_Images",
-        "Avg_BER", "Std_BER",
-        "Avg_Accuracy", "Std_Accuracy",
-        "Avg_PSNR", "Std_PSNR",
-        "Avg_LPIPS", "Std_LPIPS",
-        "Avg_SSIM", "Std_SSIM",
-    ])
-    for label in sorted(ratio_results.keys()):
-        s = ratio_results[label]['stats']
-        writer.writerow([
-            label,
-            s['processed_images'],
-            s['avg_ber'],      s['std_ber'],
-            s['avg_accuracy'], s['std_accuracy'],
-            s['avg_psnr'],     s['std_psnr'],
-            s['avg_lpips'],    s['std_lpips'],
-            s['avg_ssim'],     s['std_ssim'],
-        ])
-
-# Comparison bar-chart plot (flat-ratio subsets only)
-if ratio_results:
-    plot_flat_ratio_comparison(ratio_results, OUTPUT_DIR)
+stats = results['stats']
+print(f"\n✅ Testing completed!")
+print(f"   Processed Images: {stats['processed_images']}")
+print(f"   BER:      {stats['avg_ber']:.4f} ± {stats['std_ber']:.4f}")
+print(f"   Accuracy: {stats['avg_accuracy']:.4f} ± {stats['std_accuracy']:.4f}")
+print(f"   PSNR:     {stats['avg_psnr']:.2f} ± {stats['std_psnr']:.2f}")
+print(f"   SSIM:     {stats['avg_ssim']:.4f} ± {stats['std_ssim']:.4f}")
+print(f"   LPIPS:    {stats['avg_lpips']:.4f} ± {stats['std_lpips']:.4f}")
 
 # ------------------------------------------------
 # Final summary
 # ------------------------------------------------
 print("\n" + "="*60)
-print("✅  ALL TESTING COMPLETED SUCCESSFULLY")
+print("✅  TESTING COMPLETED SUCCESSFULLY")
 print("="*60)
 print(f"\n📁 Output directory: {OUTPUT_DIR}")
-print(f"\n📊 Results structure:")
-print(f"   ├── all_images/")
-for label in sorted(ratio_results.keys()):
-    tag = label.replace('-', '_')
-    print(f"   ├── flat_ratio_{tag}/")
-print(f"   ├── flat_ratio_comparison.csv")
-print(f"   └── flat_ratio_comparison.png")
+print(f"\n📊 Results saved:")
+print(f"   ├── per_batch_results.csv")
+print(f"   ├── results_summary.txt")
+print(f"   ├── BER_distribution.png")
+print(f"   ├── ACCURACY_distribution.png")
+print(f"   ├── PSNR_distribution.png")
+print(f"   ├── LPIPS_distribution.png")
+print(f"   └── SSIM_distribution.png")
 print()

@@ -12,6 +12,8 @@ decoder_only_training = settings.decoder_only_training
 
 project_name = settings.project_name
 dataset_path = settings.dataset_path
+enable_validation = settings.enable_validation
+validation_dataset_path = settings.validation_dataset_path if enable_validation else None
 epoch_number = settings.epoch_number
 batch_size = settings.batch_size
 train_continue = settings.train_continue

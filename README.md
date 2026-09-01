@@ -69,3 +69,83 @@ GPU: <Your NVIDIA GPU>
 * TensorBoard 2.19.0
 
 The project focuses on image watermarking/steganography with distortion-aware attention gating, U-Net3+ based feature processing, wavelet-domain processing, and robustness against JPEG compression.
+
+## Dataset Configuration
+
+DAWN requires training, validation, and testing datasets. All should contain RGB images in JPEG or PNG format.
+
+### Training Dataset
+
+Place your training images in a flat directory with no subdirectories:
+
+```
+your_training_dataset/
+├── image_001.jpeg
+├── image_002.png
+├── image_003.jpeg
+└── ...
+```
+
+### Validation Dataset
+
+Place your validation images in a flat directory with no subdirectories:
+
+```
+your_validation_dataset/
+├── image_001.jpeg
+├── image_002.png
+├── image_003.jpeg
+└── ...
+```
+
+### Configuration
+
+Update `train_settings.json` with both dataset paths:
+```json
+{
+  "dataset_path": "/path/to/your_training_dataset",
+  "enable_validation": true,
+  "validation_dataset_path": "/path/to/your_validation_dataset",
+  "H": 128,
+  "W": 128,
+  "message_length": 30,
+  "batch_size": 4,
+  "epoch_number": 65
+}
+```
+
+**Key Parameter:**
+- `enable_validation` (true/false): Enable or disable validation during training. Set to `false` to skip validation and train faster.
+
+### Testing Dataset
+
+The test dataset must have a `test` subdirectory containing all test images:
+
+```
+your_test_dataset/
+└── test/
+    ├── image_001.jpeg
+    ├── image_002.png
+    ├── image_003.jpeg
+    └── ...
+```
+
+Then update `test_settings.json` to point to the `test` subdirectory:
+```json
+{
+  "dataset_path": "/path/to/your_test_dataset/test",
+  "H": 128,
+  "W": 128,
+  "message_length": 30,
+  "model_epoch": 65
+}
+```
+
+### Dataset Requirements
+
+- **Image Format:** JPEG or PNG
+- **Image Size:** Any size (automatically resized to H×W during loading)
+- **Color Space:** RGB (3-channel color images)
+- **Training Dataset:** Typically 15,000-20,000+ images
+- **Validation Dataset:** Typically 2,000-5,000 images
+- **Test Dataset:** Typically 5,000+ images

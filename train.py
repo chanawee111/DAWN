@@ -28,12 +28,18 @@ writer = SummaryWriter(log_dir=os.path.join(result_folder, "tensorboard_logs"))
 model = Model(H, W, message_length, noise_layers, device, batch_size, lr, decoder_only_training=decoder_only_training, seed=seed)
 
 # Load dataset with augmentation
-train_dataset = Dataset_loader_augmentation(os.path.join(dataset_path, "coco_color_filter_ratio_20000"), H, W)
+train_dataset = Dataset_loader_augmentation(dataset_path, H, W)
 
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)
 
-val_dataset = Dataset_loader(os.path.join(dataset_path, "val2017_2500"), H, W)
-val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=True)
+# Load validation dataset if enabled
+val_dataloader = None
+if enable_validation:
+    val_dataset = Dataset_loader(validation_dataset_path, H, W)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=True)
+    print(f"✓ Validation enabled: {validation_dataset_path}")
+else:
+    print("⚠ Validation disabled")
 
 def log_module_params(module, module_name, epoch):
     for name, param in module.named_parameters():
@@ -146,66 +152,67 @@ for epoch in range(latest_epoch + 1, epoch_number + 1):
                                                             time.localtime()) + f" | Epoch {epoch} -----------------------\n"
 
     # ------------------------------------------------
-    # Validation
+    # Validation (if enabled)
     # ------------------------------------------------
-    val_result = {
-        "error_rate": 0.0,
-        "psnr_loss": 0.0,
-        "ssim_loss": 0.0,
-        "generator_loss": 0.0,
-        "generator_loss_on_discriminator": 0.0,
-        "generator_loss_on_encoder": 0.0,
-        "generator_loss_on_decoder": 0.0,
-        "discriminator_cover_loss": 0.0,
-        "discriminator_encoded_loss": 0.0,
-        "decode_accuracy" : 0.0,
-        "Lpips_loss_in_train" : 0.0      
-    }
+    if enable_validation and val_dataloader is not None:
+        val_result = {
+            "error_rate": 0.0,
+            "psnr_loss": 0.0,
+            "ssim_loss": 0.0,
+            "generator_loss": 0.0,
+            "generator_loss_on_discriminator": 0.0,
+            "generator_loss_on_encoder": 0.0,
+            "generator_loss_on_decoder": 0.0,
+            "discriminator_cover_loss": 0.0,
+            "discriminator_encoded_loss": 0.0,
+            "decode_accuracy" : 0.0,
+            "Lpips_loss_in_train" : 0.0      
+        }
 
-    start_time = time.time()
-    saved_iterations = np.random.choice(np.arange(len(val_dataloader)), size=save_images_number, replace=False)
-    saved_all = None
-    num = 0
+        start_time = time.time()
+        saved_iterations = np.random.choice(np.arange(len(val_dataloader)), size=save_images_number, replace=False)
+        saved_all = None
+        num = 0
 
-    pbar = tqdm(val_dataloader, desc=f"Epoch {epoch} [Val]")
-    for i, images in enumerate(pbar):
-        image = images.to(device)
-        message = torch.Tensor(np.random.choice([0, 1], (image.shape[0], message_length))).to(device)
+        pbar = tqdm(val_dataloader, desc=f"Epoch {epoch} [Val]")
+        for i, images in enumerate(pbar):
+            image = images.to(device)
+            message = torch.Tensor(np.random.choice([0, 1], (image.shape[0], message_length))).to(device)
 
-        result, (images, encoded_images, noised_image, messages, decoded_message) = model.validation(image, message, epoch)
+            result, (images, encoded_images, noised_image, messages, decoded_message) = model.validation(image, message, epoch)
 
-        for key in result:
-            val_result[key] += float(result[key])
-        num += 1
+            for key in result:
+                val_result[key] += float(result[key])
+            num += 1
 
-        if i in saved_iterations:
-            if saved_all is None:
-                saved_all = get_random_images(images, encoded_images, noised_image)
-            else:
-                saved_all = concatenate_images(saved_all, image, encoded_images, noised_image)
+            if i in saved_iterations:
+                if saved_all is None:
+                    saved_all = get_random_images(images, encoded_images, noised_image)
+                else:
+                    saved_all = concatenate_images(saved_all, image, encoded_images, noised_image)
 
-        pbar.set_postfix({key: f"{val_result[key]/num:.4f}" for key in ["error_rate","decode_accuracy", "psnr_loss", "ssim_loss","Lpips_loss_in_train"]})
+            pbar.set_postfix({key: f"{val_result[key]/num:.4f}" for key in ["error_rate","decode_accuracy", "psnr_loss", "ssim_loss","Lpips_loss_in_train"]})
 
-    for key in val_result:
-        writer.add_scalar(f"Val/{key}", val_result[key] / num, epoch)
+        for key in val_result:
+            writer.add_scalar(f"Val/{key}", val_result[key] / num, epoch)
 
-    # Save image grid to TensorBoard
-    if saved_all is not None:
-        if epoch % 10 == 0:
-            titles = ["Original", "Encoded", "Noised"]
-            for idx, img_set in enumerate(saved_all):
-                grid = torchvision.utils.make_grid(img_set, normalize=True, scale_each=True)
-                writer.add_image(f"Validation/{titles[idx]}", grid, epoch)
+        # Save image grid to TensorBoard
+        if saved_all is not None:
+            if epoch % 10 == 0:
+                titles = ["Original", "Encoded", "Noised"]
+                for idx, img_set in enumerate(saved_all):
+                    grid = torchvision.utils.make_grid(img_set, normalize=True, scale_each=True)
+                    writer.add_image(f"Validation/{titles[idx]}", grid, epoch)
 
-    # Save validation log
-    content = f"Epoch {epoch} : {int(time.time() - start_time)}s\n"
-    for key in val_result:
-        content += f"{key}={val_result[key] / num},"
-    content += "\n"
+        # Save validation log
+        content = f"Epoch {epoch} : {int(time.time() - start_time)}s\n"
+        for key in val_result:
+            content += f"{key}={val_result[key] / num},"
+        content += "\n"
 
-    with open(os.path.join(result_folder, "val_log.txt"), "a") as file:
-        file.write(content)
-    print(content)
+        with open(os.path.join(result_folder, "val_log.txt"), "a") as file:
+            file.write(content)
+        print(content)
 
     # Save model
     path_model = os.path.join(result_folder, "models")
