@@ -45,7 +45,7 @@ class Model:
 
 
         # define loss functions
-        self.MSE_loss = YCbCrWeightedMSELoss(y_weight=1.0, chroma_weight=1.0)
+        self.MSE_loss = YCbCrWeightedMSELoss(y_weight=0.5, chroma_weight=1.0)
         self.LPIPS_loss = LearnedPerceptualImagePatchSimilarity(net_type='vgg').to(device)
         self.SSIM_loss = SSIM(data_range=2.0, size_average=True, channel=3)
         # edge loss compute 
