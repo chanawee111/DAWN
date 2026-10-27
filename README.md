@@ -5,6 +5,8 @@ Image Steganography, Watermarking, Attention Mechanism , U-Net3+, JPEG Compressi
 
 DAWN was developed and tested using Python 3.13 and PyTorch 2.6.0 with CUDA 12.4. (Ubuntu 24.04.2 LTS)
 
+> **Windows disclaimer:** This project has not been tested on Windows. Running it on Windows may require platform-specific setup or code changes, and you should expect to debug compatibility issues.
+
 ### 1. Clone the repository
 
 ```bash
