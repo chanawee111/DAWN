@@ -8,7 +8,7 @@ DAWN was developed and tested using Python 3.13 and PyTorch 2.6.0 with CUDA 12.4
 ### 1. Clone the repository
 
 ```bash
-git clone <YOUR_DAWN_REPOSITORY_URL>
+git clone https://github.com/chanawee111/DAWN-A-Distortion-Aware-Watermarking-Network-with-Attention-Gating-under-JPEG-Compression.git
 cd DAWN-A-Distortion-Aware-Watermarking-Network-with-Attention-Gating-under-JPEG-Compression
 ```
 
