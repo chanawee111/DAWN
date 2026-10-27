@@ -1,73 +1,139 @@
+
 import os
-from PIL import Image
-import numpy as np
-import random
-import torch
+from PIL import Image, UnidentifiedImageError
 from torchvision import transforms
-from torch.utils import data
 from torch.utils.data import Dataset
+
+
+# Supported image formats; CSV and other non-image files are excluded.
+IMAGE_EXTENSIONS = {
+    ".jpg", ".jpeg", ".png", ".bmp",
+    ".webp", ".tif", ".tiff"
+}
 
 
 class Dataset_loader(Dataset):
 
-	def __init__(self, path, H=256, W=256):
-		super(Dataset_loader, self).__init__()
-		self.H = H
-		self.W = W
-		self.path = path
-		self.list = os.listdir(path)
-		self.transform = transforms.Compose([
-			transforms.Resize((int(self.H), int(self.W))),
-			# transforms.RandomCrop((self.H, self.W)),
-			transforms.ToTensor(),
-			transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
-		])
+    def __init__(self, path, H=256, W=256):
+        super().__init__()
 
+        self.H = H
+        self.W = W
+        self.path = os.fspath(path)
 
-	def transform_image(self, image):
+        if not os.path.isdir(self.path):
+            raise FileNotFoundError(
+                f"Dataset directory not found: {self.path}"
+            )
 
-		# ignore
-		if image.size[0] < self.W / 2 and image.size[1] < self.H / 2:
-			return None
-		if image.size[0] < image.size[1] / 2 or image.size[1] < image.size[0] / 2:
-			return None
+        # Include only image files, not CSV files or subdirectories.
+        self.list = sorted(
+            filename
+            for filename in os.listdir(self.path)
+            if os.path.isfile(os.path.join(self.path, filename))
+            and os.path.splitext(filename)[1].lower()
+            in IMAGE_EXTENSIONS
+        )
 
-		# Augment, ToTensor and Normalize
-		image = self.transform(image)
+        if not self.list:
+            raise RuntimeError(
+                f"No supported image files found in: {self.path}"
+            )
 
-		return image
+        self.transform = transforms.Compose([
+            transforms.Resize((int(self.H), int(self.W))),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                [0.5, 0.5, 0.5],
+                [0.5, 0.5, 0.5]
+            )
+        ])
 
-	def __getitem__(self, index):
+        print(f"Dataset directory: {self.path}")
+        print(f"Image files found: {len(self.list)}")
 
-		while True:
-			image = Image.open(os.path.join(self.path, self.list[index])).convert("RGB")
-			image = self.transform_image(image)
-			if image is not None:
-				return image
-			# print("dataloader : skip index", index)
-			index += 1
+    def transform_image(self, image):
 
-	def __len__(self):
-		return len(self.list)
+        # Preserve the original image filtering rules.
+        if (
+            image.size[0] < self.W / 2
+            and image.size[1] < self.H / 2
+        ):
+            return None
+
+        if (
+            image.size[0] < image.size[1] / 2
+            or image.size[1] < image.size[0] / 2
+        ):
+            return None
+
+        return self.transform(image)
+
+    def __getitem__(self, index):
+
+        # Try each image at most once to avoid an infinite loop.
+        for offset in range(len(self.list)):
+            current_index = (index + offset) % len(self.list)
+            filename = self.list[current_index]
+            image_path = os.path.join(self.path, filename)
+
+            try:
+                with Image.open(image_path) as img:
+                    image = img.convert("RGB")
+
+                image = self.transform_image(image)
+
+                if image is not None:
+                    return image
+
+            except (OSError, ValueError, UnidentifiedImageError) as exc:
+                print(f"Warning: skipping unreadable image: {filename}")
+                print(f"Reason: {exc}")
+
+        raise RuntimeError(
+            f"No valid images could be loaded from: {self.path}. "
+            "Check for corrupted images or images rejected by the "
+            "size/aspect-ratio filters."
+        )
+
+    def __len__(self):
+        return len(self.list)
+
 
 class Dataset_loader_augmentation(Dataset):
 
     def __init__(self, path, H=256, W=256):
-        super(Dataset_loader_augmentation, self).__init__()
+        super().__init__()
+
         self.H = H
         self.W = W
-        self.path = path
-        self.list = os.listdir(path)
+        self.path = os.fspath(path)
 
-        # -------------------------
-        # Transform + Augmentation
-        # -------------------------
+        if not os.path.isdir(self.path):
+            raise FileNotFoundError(
+                f"Dataset directory not found: {self.path}"
+            )
+
+        # Include only image files.
+        self.list = sorted(
+            filename
+            for filename in os.listdir(self.path)
+            if os.path.isfile(os.path.join(self.path, filename))
+            and os.path.splitext(filename)[1].lower()
+            in IMAGE_EXTENSIONS
+        )
+
+        if not self.list:
+            raise RuntimeError(
+                f"No supported image files found in: {self.path}"
+            )
+
         self.transform = transforms.Compose([
             transforms.Resize((int(self.H), int(self.W))),
 
-            #Augmentations
-            transforms.RandomHorizontalFlip(p=0.5),  # left-right flip
-            transforms.RandomVerticalFlip(p=0.5),    # top-bottom flip
+            # Original augmentations.
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomVerticalFlip(p=0.5),
 
             transforms.ToTensor(),
             transforms.Normalize(
@@ -76,30 +142,52 @@ class Dataset_loader_augmentation(Dataset):
             )
         ])
 
+        print(f"Augmentation dataset directory: {self.path}")
+        print(f"Image files found: {len(self.list)}")
+
     def transform_image(self, image):
 
-        # ignore very small or extreme aspect-ratio images
-        if image.size[0] < self.W / 2 and image.size[1] < self.H / 2:
-            return None
-        if image.size[0] < image.size[1] / 2 or image.size[1] < image.size[0] / 2:
+        # Preserve the original image filtering rules.
+        if (
+            image.size[0] < self.W / 2
+            and image.size[1] < self.H / 2
+        ):
             return None
 
-        # Apply augmentation + tensor + normalize
-        image = self.transform(image)
-        return image
+        if (
+            image.size[0] < image.size[1] / 2
+            or image.size[1] < image.size[0] / 2
+        ):
+            return None
+
+        return self.transform(image)
 
     def __getitem__(self, index):
 
-        while True:
-            image = Image.open(
-                os.path.join(self.path, self.list[index])
-            ).convert("RGB")
+        # Try each image at most once to avoid an infinite loop.
+        for offset in range(len(self.list)):
+            current_index = (index + offset) % len(self.list)
+            filename = self.list[current_index]
+            image_path = os.path.join(self.path, filename)
 
-            image = self.transform_image(image)
-            if image is not None:
-                return image
+            try:
+                with Image.open(image_path) as img:
+                    image = img.convert("RGB")
 
-            index += 1
+                image = self.transform_image(image)
+
+                if image is not None:
+                    return image
+
+            except (OSError, ValueError, UnidentifiedImageError) as exc:
+                print(f"Warning: skipping unreadable image: {filename}")
+                print(f"Reason: {exc}")
+
+        raise RuntimeError(
+            f"No valid images could be loaded from: {self.path}. "
+            "Check for corrupted images or images rejected by the "
+            "size/aspect-ratio filters."
+        )
 
     def __len__(self):
         return len(self.list)

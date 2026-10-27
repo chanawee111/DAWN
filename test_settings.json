@@ -1,8 +1,8 @@
 {
-  "result_folder": "dawn_jpeg50_420/",
-  "model_epoch": 65,
+  "result_folder": "dawn_jpeg50_420_fine_tune/",
+  "model_epoch": 120,
   "strength_factor": 1,
-  "dataset_path": "/home/chanawee/anaconda3/envs/proposal/src/my_proposal/datasets/ImageNet_balanced_test5000_flat_color/test",
+  "dataset_path": "H:/anaconda/envs/dawn/src/dataset/ImageNet_balanced_test5000_flat_color/test",
   "H": 128,
   "W": 128,
   "message_length": 30,
