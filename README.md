@@ -297,3 +297,6 @@ During testing, the system randomly selects images from `save_images_number` bat
 - **grid_encoded_images.png**: Grid of watermarked images after encoding
 
 These grids allow visual inspection of how the watermarking affects the image quality.
+
+## Acknowledgement
+The codes are designed based on [MBRS](https://github.com/jzyustc/MBRS).
